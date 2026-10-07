@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Simulador Android - Estilo Motorola</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Roboto', 'sans-serif'],
+                    },
+                    colors: {
+                        'moto-blue': '#001489',
+                        'android-green': '#3DDC84',
+                        'sys-light': '#f8f9fa',
+                        'sys-dark': '#121212',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            overscroll-behavior-y: none;
+            overflow: hidden;
+            background-color: #000;
+            user-select: none; /* Prevenir selección de texto accidental */
+        }
+
+        #phone-container {
+            width: 100vw;
+            height: 100vh;
+            max-width: 414px;
+            max-height: 896px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(255,255,255,0.05);
+            background-size: cover;
+            background-position: center;
+            transition: background-image 0.3s ease;
+        }
+
+        @media (min-width: 415px) {
+            #phone-container {
+                height: 90vh;
+                margin-top: 5vh;
+                border-radius: 40px;
+                border: 12px solid #222;
+                box-shadow: 0 25px 50px -12px rgba(255, 255, 255, 0.25), inset 0 0 0 4px #000;
+            }
+        }
+
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        #lock-screen {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 40px 20px;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+            backdrop-filter: brightness(0.7);
+        }
+        
+        #lock-screen.unlocked {
+            transform: translateY(-100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px 12px;
+            padding: 24px 16px;
+        }
+
+        .app-icon-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+
+        .app-icon-container:active { transform: scale(0.85); }
+
+        .app-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 22%; /* Squircle parecido a Android actual */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+            color: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            margin-bottom: 8px;
+            background-size: cover;
+        }
+
+        .app-label {
+            font-size: 12px;
+            color: white;
+            text-align: center;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 500;
+        }
+
+        #app-drawer {
+            position: absolute;
+            bottom: -100%;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255,255,255,0.92);
+            backdrop-filter: blur(15px);
+            transition: bottom 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+            z-index: 40;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .dark #app-drawer { background-color: rgba(20,20,20,0.92); }
+        #app-drawer.open { bottom: 0; }
+
+        /* Notification Panel */
+        #notification-panel {
+            position: absolute;
+            top: -100%;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255,255,255,0.95);
+            backdrop-filter: blur(20px);
+            transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 80;
+            display: flex;
+            flex-direction: column;
+        }
+        .dark #notification-panel { background-color: rgba(15,15,15,0.95); }
+        #notification-panel.open { top: 0; }
+
+        .quick-setting-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .qs-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.2s;
+        }
+        .qs-icon.active {
+            background-color: #3b82f6; /* Blue 500 */
+            color: white;
+        }
+        .qs-icon.inactive {
+            background-color: #e5e7eb;
+            color: #4b5563;
+        }
+        .dark .qs-icon.inactive {
+            background-color: #374151;
+            color: #9ca3af;
+        }
+
+        .system-app {
+            position: absolute;
+            top: 0;
+            left: 100%;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            z-index: 50;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+        .dark .system-app { background-color: #121212; color: white; }
+        .system-app.open { left: 0; }
+
+        .app-header {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            padding-top: 40px; /* Safe area para status bar */
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .dark .app-header {
+            background-color: #1f1f1f;
+            border-bottom: 1px solid #333;
+            box-shadow: none;
+        }
+
+        /* Calculator Grid */
+        .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            padding: 20px;
+            height: 100%;
+        }
+        .calc-btn {
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            cursor: pointer;
+            transition: opacity 0.1s;
+        }
+        .calc-btn:active { opacity: 0.7; }
+        .calc-btn-num { background-color: #f3f4f6; color: #111827; }
+        .dark .calc-btn-num { background-color: #374151; color: white; }
+        .calc-btn-op { background-color: #e0e7ff; color: #4f46e5; }
+        .dark .calc-btn-op { background-color: #312e81; color: #818cf8; }
+        .calc-btn-eq { background-color: #4f46e5; color: white; border-radius: 20px; grid-column: span 2; }
+
+        /* Camera App */
+        #camera-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background-color: black;
+        }
+        .camera-controls {
+            position: absolute;
+            bottom: 60px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 20px;
+            z-index: 60;
+        }
+        .shutter-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background-color: white;
+            border: 4px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .shutter-btn:active { background-color: #ccc; transform: scale(0.95); }
+        #camera-flash {
+            position: absolute;
+            inset: 0;
+            background-color: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 70;
+            transition: opacity 0.1s;
+        }
+
+        .status-bar {
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 90;
+            position: absolute;
+            top: 0;
+            width: 100%;
+            cursor: pointer; /* Para indicar que se puede abrir panel */
+        }
+        .system-app-open .status-bar, .panel-open .status-bar {
+            color: black;
+            text-shadow: none;
+        }
+        .dark.system-app-open .status-bar, .dark.panel-open .status-bar { color: white; }
+        
+        .camera-open .status-bar {
+            color: white !important;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8) !important;
+        }
+
+        .nav-bar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 52px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+            z-index: 90;
+        }
+        .system-app-open .nav-bar {
+            background: white;
+        }
+        .dark.system-app-open .nav-bar {
+            background: #121212;
+        }
+        .camera-open .nav-bar {
+            background: transparent !important;
+        }
+        
+        .nav-icon {
+            color: white;
+            font-size: 20px;
+            padding: 10px 30px;
+            cursor: pointer;
+            opacity: 0.9;
+        }
+        .system-app-open .nav-icon { color: black; }
+        .dark.system-app-open .nav-icon { color: white; }
+        .camera-open .nav-icon { color: white !important; }
+
+    </style>
+</head>
+<body class="dark" id="body-theme">
+
+    <div id="phone-container" style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=1000');">
+        
+        <div id="lock-screen" style="background-image: inherit;" onclick="unlockPhone()">
+            <div class="mt-16 text-center text-white drop-shadow-lg">
+                <i class="fas fa-lock text-xl mb-4 opacity-80"></i>
+                <div id="lock-clock" class="text-7xl font-light tracking-tighter">12:00</div>
+                <div id="lock-date" class="text-lg font-medium mt-2">Martes, 6 de Oct</div>
+            </div>
+            
+            <div class="mb-20 text-center text-white opacity-80 animate-pulse">
+                <i class="fas fa-chevron-up text-xl"></i>
+                <p class="text-sm mt-2">Desliza o presiona para desbloquear</p>
+            </div>
+        </div>
+
+        <div class="status-bar" id="status-bar" onclick="toggleNotifications()">
+            <span id="clock">12:00</span>
+            <!-- Notch simulado -->
+            <div class="absolute left-1/2 transform -translate-x-1/2 w-32 h-6 bg-black rounded-b-xl top-0 hidden md:block z-50"></div>
+            <div class="flex gap-2 items-center">
+                <i class="fas fa-wifi text-[11px]" id="icon-wifi"></i>
+                <i class="fas fa-signal text-[11px]"></i>
+                <span class="text-[11px] ml-1">100%</span>
+                <i class="fas fa-battery-full text-[13px]"></i>
+            </div>
+        </div>
+
+        <div id="notification-panel">
+            <div class="pt-12 px-6 pb-4">
+                <div class="flex justify-between items-center mb-6 text-gray-800 dark:text-gray-200">
+                    <span id="panel-clock" class="text-2xl font-light">12:00</span>
+                    <i class="fas fa-cog text-xl cursor-pointer" onclick="openApp('settings'); toggleNotifications();"></i>
+                </div>
+                
+                <!-- Quick Settings Grid -->
+                <div class="grid grid-cols-4 gap-4 mb-6">
+                    <div class="quick-setting-btn" onclick="toggleQS(this, 'icon-wifi', 'fa-wifi')">
+                        <div class="qs-icon active"><i class="fas fa-wifi"></i></div>
+                        <span class="text-xs text-gray-600 dark:text-gray-400">Wi-Fi</span>
+                    </div>
+                    <div class="quick-setting-btn" onclick="toggleQS(this, null, null)">
+                        <div class="qs-icon inactive"><i class="fab fa-bluetooth-b"></i></div>
+                        <span class="text-xs text-gray-600 dark:text-gray-400">Bluetooth</span>
+                    </div>
+                    <div class="quick-setting-btn" onclick="toggleThemeQS(this)">
+                        <div class="qs-icon active"><i class="fas fa-moon"></i></div>
+                        <span class="text-xs text-gray-600 dark:text-gray-400">Tema Osc.</span>
+                    </div>
+                    <div class="quick-setting-btn" onclick="toggleQS(this, null, null)">
+                        <div class="qs-icon inactive"><i class="fas fa-plane"></i></div>
+                        <span class="text-xs text-gray-600 dark:text-gray-400">Avión</span>
+                    </div>
+                    <div class="quick-setting-btn" onclick="toggleQS(this, null, null)">
+                        <div class="qs-icon inactive"><i class="fas fa-sync"></i></div>
+                        <span class="text-xs text-gray-600 dark:text-gray-400">Giro Auto</span>
+                    </div>
+                    <div class="quick-setting-btn" onclick="toggleQS(this, null, null)">
+                        <div class="qs-icon inactive"><i class="fas fa-lightbulb"></i></div>
+                        <span class="text-xs text-gray-600 dark:text-gray-400">Linterna</span>
+                    </div>
+                </div>
+
+                <!-- Brillo -->
+                <div class="flex items-center gap-4 mb-6">
+                    <i class="fas fa-sun text-gray-400"></i>
+                    <input type="range" min="0" max="100" value="80" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                    <i class="fas fa-sun text-gray-400 text-lg"></i>
+                </div>
+            </div>
+
+            <!-- Notifications Area -->
+            <div class="flex-grow bg-gray-100 dark:bg-black rounded-t-3xl p-4 overflow-y-auto">
+                <h3 class="text-xs uppercase tracking-wider text-gray-500 mb-4 ml-2">Notificaciones</h3>
+                
+                <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm mb-3">
+                    <div class="flex justify-between items-start mb-1">
+                        <div class="flex items-center gap-2">
+                            <div class="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs"><i class="fab fa-whatsapp"></i></div>
+                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">WhatsApp</span>
+                        </div>
+                        <span class="text-xs text-gray-500">Ahora</span>
+                    </div>
+                    <p class="text-sm text-gray-800 dark:text-gray-300 font-medium mt-1">Mamá</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">¿A qué hora llegas a comer?</p>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm">
+                    <div class="flex justify-between items-start mb-1">
+                        <div class="flex items-center gap-2">
+                            <div class="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs"><i class="fab fa-google"></i></div>
+                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">Sistema Android</span>
+                        </div>
+                        <span class="text-xs text-gray-500">Hace 1h</span>
+                    </div>
+                    <p class="text-sm text-gray-800 dark:text-gray-300 font-medium mt-1">Actualización disponible</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Moto OS 2.0 está listo para instalarse.</p>
+                </div>
+            </div>
+            
+            <!-- Barra para cerrar -->
+            <div class="py-3 flex justify-center cursor-pointer bg-gray-100 dark:bg-black" onclick="toggleNotifications()">
+                <div class="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
+            </div>
+        </div>
+
+        <div id="home-screen" class="absolute inset-0 pt-8 pb-12 flex flex-col justify-between">
+            
+            <div>
+                <!-- Mock Clock Widget -->
+                <div class="text-center mt-16 text-white drop-shadow-lg" onclick="openApp('clock')">
+                    <div id="widget-clock" class="text-6xl font-light tracking-tighter">12:00</div>
+                    <div id="widget-date" class="text-sm font-medium mt-2 uppercase tracking-wide">Martes, 6 de Oct</div>
+                    <div class="text-sm mt-1 opacity-90"><i class="fas fa-cloud-sun mr-1"></i> 24°C Chilapa</div>
+                </div>
+                
+                <!-- Google Search Widget -->
+                <div class="bg-white bg-opacity-95 rounded-full p-3 px-5 flex items-center mx-5 mt-10 shadow-lg cursor-pointer transform transition active:scale-95" onclick="openApp('browser')">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="G" class="w-6 h-6 mr-3">
+                    <span class="text-gray-500 flex-grow text-sm font-medium">Búsqueda o URL...</span>
+                    <i class="fas fa-microphone text-blue-500 mx-3 text-lg"></i>
+                    <i class="fas fa-camera text-blue-500 text-lg"></i>
+                </div>
+            </div>
+
+            <!-- Bottom section (Dock) -->
+            <div class="mb-4">
+                <!-- App Drawer Indicator -->
+                <div class="flex justify-center mb-4 cursor-pointer p-2" onclick="toggleAppDrawer()">
+                    <i class="fas fa-chevron-up text-white opacity-80 drop-shadow-md"></i>
+                </div>
+                
+                <!-- Dock Apps -->
+                <div class="flex justify-around px-2">
+                    <div class="app-icon-container" onclick="showToast('Llamando...')">
+                        <div class="app-icon bg-green-500"><i class="fas fa-phone"></i></div>
+                    </div>
+                    <div class="app-icon-container" onclick="showToast('Mensajes vacíos')">
+                        <div class="app-icon bg-blue-500"><i class="fas fa-comment-alt"></i></div>
+                    </div>
+                    <div class="app-icon-container" onclick="openApp('browser')">
+                        <div class="app-icon bg-white"><img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/Google_Chrome_icon_%28February_2022%29.svg" class="w-9 h-9"></div>
+                    </div>
+                    <div class="app-icon-container" onclick="openApp('camera')">
+                        <div class="app-icon bg-gray-900 border border-gray-700"><i class="fas fa-camera text-white"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="app-drawer">
+            <div class="px-5 pt-12 pb-2">
+                <div class="bg-gray-100 dark:bg-gray-800 rounded-full p-2 px-4 flex items-center shadow-inner">
+                    <i class="fas fa-search text-gray-500 mr-3"></i>
+                    <input type="text" placeholder="Buscar aplicaciones" class="bg-transparent outline-none w-full text-base text-black dark:text-white" onkeyup="filterApps(this.value)">
+                </div>
+            </div>
+            
+            <div class="app-grid overflow-y-auto hide-scrollbar flex-grow content-start" id="all-apps-grid">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <div id="app-files" class="system-app">
+            <div class="app-header">
+                <i class="fas fa-arrow-left text-xl mr-4 cursor-pointer" onclick="closeApp()"></i>
+                <h2 class="text-xl font-medium flex-grow text-gray-900 dark:text-white">Archivos</h2>
+                <i class="fas fa-search text-gray-600 dark:text-gray-300"></i>
+            </div>
+            <div class="flex-grow overflow-y-auto bg-sys-light dark:bg-sys-dark p-4">
+                
+                <div class="mb-6">
+                    <div class="bg-blue-600 rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
+                        <i class="fas fa-sd-card absolute -right-4 -bottom-4 text-7xl opacity-20"></i>
+                        <h3 class="text-sm font-medium opacity-90 mb-1">Almacenamiento Interno</h3>
+                        <div class="text-2xl font-bold mb-3">45 GB <span class="text-sm font-normal opacity-80">usados de 128 GB</span></div>
+                        <div class="w-full bg-white bg-opacity-30 rounded-full h-2">
+                            <div class="bg-white h-2 rounded-full" style="width: 35%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider ml-1">Categorías</h3>
+                <div class="grid grid-cols-2 gap-3 mb-6" id="files-grid">
+                    <!-- JS Populated -->
+                </div>
+                
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider ml-1">Carpetas recientes</h3>
+                <div class="space-y-2" id="files-list">
+                    <!-- Folders generated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <div id="app-settings" class="system-app">
+            <div class="app-header">
+                <i class="fas fa-arrow-left text-xl mr-4 cursor-pointer" onclick="closeApp()"></i>
+                <h2 class="text-xl font-medium text-gray-900 dark:text-white">Configuración</h2>
+            </div>
+            <div class="flex-grow overflow-y-auto bg-sys-light dark:bg-sys-dark">
+                
+                <div class="p-6 text-center bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+                    <div class="w-24 h-24 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full mx-auto flex items-center justify-center text-white text-4xl mb-4 shadow-lg shadow-blue-500/30">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h3 class="font-bold text-xl text-gray-900 dark:text-white">Invitado</h3>
+                    <p class="text-sm text-gray-500 mt-1">Moto Account</p>
+                </div>
+
+                <div class="p-4 space-y-2">
+                    <h3 class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider ml-2 mb-2 mt-2">Personalización</h3>
+                    
+                    <div class="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-sm">
+                        <!-- Tema Oscuro -->
+                        <div class="flex items-center p-4 border-b border-gray-100 dark:border-gray-800">
+                            <div class="w-10 h-10 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full flex items-center justify-center mr-4">
+                                <i class="fas fa-moon"></i>
+                            </div>
+                            <div class="flex-grow">
+                                <h4 class="font-medium text-gray-900 dark:text-white">Tema Oscuro</h4>
+                                <p class="text-xs text-gray-500">Reduce el brillo de la pantalla</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                              <input type="checkbox" id="theme-toggle" class="sr-only peer" checked onchange="toggleTheme()">
+                              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+
+                        <!-- Cambiar Fondo -->
+                        <div class="flex items-center p-4 active:bg-gray-50 dark:active:bg-gray-800 cursor-pointer" onclick="changeWallpaper()">
+                            <div class="w-10 h-10 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full flex items-center justify-center mr-4">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            <div class="flex-grow">
+                                <h4 class="font-medium text-gray-900 dark:text-white">Fondo de pantalla</h4>
+                                <p class="text-xs text-gray-500">Toca para cambiar aleatoriamente</p>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400"></i>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider ml-2 mb-2 mt-4">Dispositivo</h3>
+                    
+                    <div class="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-sm">
+                        <div class="flex items-center p-4 border-b border-gray-100 dark:border-gray-800 active:bg-gray-50 dark:active:bg-gray-800 cursor-pointer" onclick="showToast('Sistema actualizado')">
+                            <div class="w-10 h-10 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full flex items-center justify-center mr-4">
+                                <i class="fas fa-mobile-alt"></i>
+                            </div>
+                            <div class="flex-grow">
+                                <h4 class="font-medium text-gray-900 dark:text-white">Acerca del teléfono</h4>
+                                <p class="text-xs text-gray-500">Moto OS Simulator v2.0</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center p-4 active:bg-gray-50 dark:active:bg-gray-800 cursor-pointer" onclick="document.getElementById('lock-screen').classList.remove('unlocked'); closeApp();">
+                            <div class="w-10 h-10 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-full flex items-center justify-center mr-4">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                            <div class="flex-grow">
+                                <h4 class="font-medium text-red-600 dark:text-red-400">Bloquear Dispositivo</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="app-calc" class="system-app">
+            <div class="app-header shadow-none border-none pb-0">
+                <i class="fas fa-arrow-left text-xl mr-4 cursor-pointer" onclick="closeApp()"></i>
+                <h2 class="text-xl font-medium text-gray-900 dark:text-white">Calculadora</h2>
+            </div>
+            <div class="flex-grow flex flex-col bg-white dark:bg-sys-dark">
+                <!-- Calc Display -->
+                <div class="flex-grow flex flex-col justify-end p-6 text-right">
+                    <div id="calc-history" class="text-xl text-gray-500 dark:text-gray-400 min-h-[1.75rem] mb-2 break-all"></div>
+                    <div id="calc-display" class="text-6xl font-light text-gray-900 dark:text-white break-all">0</div>
+                </div>
+                <!-- Calc Keypad -->
+                <div class="h-[60%] bg-gray-50 dark:bg-gray-900 rounded-t-3xl shadow-[0_-10px_30px_rgba(0,0,0,0.05)] dark:shadow-none">
+                    <div class="calc-grid">
+                        <div class="calc-btn calc-btn-num text-red-500 font-bold" onclick="calcAction('C')">C</div>
+                        <div class="calc-btn calc-btn-op" onclick="calcAction('()')">( )</div>
+                        <div class="calc-btn calc-btn-op" onclick="calcAction('%')">%</div>
+                        <div class="calc-btn calc-btn-op" onclick="calcAction('/')">÷</div>
+                        
+                        <div class="calc-btn calc-btn-num" onclick="calcAction('7')">7</div>
+                        <div class="calc-btn calc-btn-num" onclick="calcAction('8')">8</div>
+                        <div class="calc-btn calc-btn-num" onclick="calcAction('9')">9</div>
+                        <div class="calc-btn calc-btn-op text-3xl" onclick="calcAction('*')">×</div>
+                        
+                        <div class="calc-btn calc-btn-num" onclick="calcAction('4')">4</div>
+                        <div class="calc-btn calc-btn-num" onclick="calcAction('5')">5</div>
+                        <div class="calc-btn calc-btn-num" onclick="calcAction('6')">6</div>
+                        <div class="calc-btn calc-btn-op text-4xl pb-1" onclick="calcAction('-')">-</div>
+                        
+                        <div class="calc-btn calc-btn-num" onclick="calcAction('1')">1</div>
+                        <div class="calc-btn calc-btn-num" onclick="calcAction('2')">2</div>
+                        <div class="calc-btn calc-btn-num" onclick="calcAction('3')">3</div>
+                        <div class="calc-btn calc-btn-op text-3xl" onclick="calcAction('+')">+</div>
+                        
+                        <div class="calc-btn calc-btn-num" onclick="calcAction('0')">0</div>
+                        <div class="calc-btn calc-btn-num" onclick="calcAction('.')">.</div>
+                        <div class="calc-btn calc-btn-eq" onclick="calcAction('=')">=</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="app-browser" class="system-app">
+            <!-- Browser Header / URL Bar -->
+            <div class="app-header !pt-10 !pb-2 !px-3 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex flex-col gap-2">
+                <div class="flex items-center w-full">
+                    <i class="fas fa-home text-lg mx-2 text-gray-600 dark:text-gray-300 cursor-pointer" onclick="document.getElementById('browser-frame').src='https://lite.duckduckgo.com/lite/'; document.getElementById('url-input').value='duckduckgo.com'"></i>
+                    
+                    <form onsubmit="handleBrowserSearch(event)" class="flex-grow flex items-center bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2 mx-2">
+                        <i class="fas fa-lock text-xs text-green-600 mr-2"></i>
+                        <input type="text" id="url-input" value="duckduckgo.com" class="bg-transparent w-full outline-none text-sm text-gray-900 dark:text-white" placeholder="Busca o escribe URL">
+                    </form>
+                    
+                    <div class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 w-8 h-8 rounded-md border border-gray-300 dark:border-gray-700 flex items-center justify-center text-xs font-bold mr-2">1</div>
+                    <i class="fas fa-ellipsis-v text-lg ml-2 mr-1 text-gray-600 dark:text-gray-300 cursor-pointer" onclick="closeApp()"></i>
+                </div>
+                <!-- Progress bar fake -->
+                <div class="w-full h-0.5 bg-transparent">
+                    <div id="browser-progress" class="h-full bg-blue-500 w-0 transition-all duration-500"></div>
+                </div>
+            </div>
+            
+            <div class="flex-grow relative bg-white dark:bg-gray-900">
+                <!-- Usamos DuckDuckGo Lite porque Google y otros bloquean los iframes -->
+                <iframe id="browser-frame" src="https://lite.duckduckgo.com/lite/" class="w-full h-full border-none" onload="browserLoaded()"></iframe>
+            </div>
+        </div>
+
+        <div id="app-camera" class="system-app bg-black text-white">
+            <div id="camera-flash"></div>
+            
+            <!-- Top Controls -->
+            <div class="absolute top-10 left-0 w-full flex justify-between px-6 z-50">
+                <i class="fas fa-cog text-xl drop-shadow-md"></i>
+                <i class="fas fa-bolt text-yellow-400 text-xl drop-shadow-md"></i>
+                <i class="fas fa-clock text-xl drop-shadow-md"></i>
+            </div>
+            
+            <!-- Video Preview -->
+            <video id="camera-preview" autoplay playsinline></video>
+            
+            <!-- Bottom Controls -->
+            <div class="camera-controls">
+                <div class="w-12 h-12 rounded-full border-2 border-gray-400 bg-gray-800 bg-cover bg-center cursor-pointer" style="background-image: url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=50&w=100');" onclick="showToast('Galería no disponible')"></div>
+                
+                <div class="shutter-btn" onclick="takePhoto()">
+                    <div class="w-14 h-14 rounded-full bg-white border border-gray-300"></div>
+                </div>
+                
+                <div class="w-12 h-12 rounded-full bg-gray-800 bg-opacity-50 flex items-center justify-center cursor-pointer" onclick="switchCamera()">
+                    <i class="fas fa-sync-alt text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div id="app-generic" class="system-app">
+            <div class="app-header">
+                <i class="fas fa-arrow-left text-xl mr-4 cursor-pointer" onclick="closeApp()"></i>
+                <h2 id="generic-app-title" class="text-xl font-medium text-gray-900 dark:text-white">App</h2>
+            </div>
+            <div class="flex-grow flex flex-col items-center justify-center bg-sys-light dark:bg-sys-dark p-6 text-center">
+                <div class="w-32 h-32 rounded-3xl bg-white dark:bg-gray-800 shadow-xl flex items-center justify-center mb-8 transform rotate-12">
+                    <i id="generic-app-icon" class="fas fa-box text-6xl text-blue-500"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-3">Próximamente</h3>
+                <p class="text-gray-500 text-sm max-w-[250px]">Esta aplicación de simulación aún no tiene una interfaz programada.</p>
+                <button class="mt-8 px-6 py-2 bg-blue-600 text-white rounded-full font-medium active:scale-95 transition-transform" onclick="closeApp()">Volver al inicio</button>
+            </div>
+        </div>
+
+        <div class="nav-bar">
+            <i class="fas fa-caret-left nav-icon" onclick="handleBack()"></i>
+            <i class="far fa-circle nav-icon text-[16px]" onclick="goHome()"></i>
+            <i class="far fa-square nav-icon text-[14px]" onclick="showToast('Aplicaciones recientes')"></i>
+        </div>
+
+        <!-- Toast Notification Area -->
+        <div id="toast" class="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-5 py-2.5 rounded-full text-sm shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none z-[100] whitespace-nowrap">
+            Mensaje
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. DATOS Y ESTADO ---
+        const apps = [
+            { id: 'browser', name: 'Chrome', icon: 'fab fa-chrome', color: 'bg-white text-blue-500', action: 'openApp("browser")' },
+            { id: 'settings', name: 'Configuración', icon: 'fas fa-cog', color: 'bg-gray-600', action: 'openApp("settings")' },
+            { id: 'files', name: 'Files', icon: 'fas fa-folder', color: 'bg-blue-500', action: 'openApp("files")' },
+            { id: 'calc', name: 'Calculadora', icon: 'fas fa-calculator', color: 'bg-orange-500', action: 'openApp("calc")' },
+            { id: 'camera', name: 'Cámara', icon: 'fas fa-camera', color: 'bg-gray-900 border border-gray-700', action: 'openApp("camera")' },
+            { id: 'maps', name: 'Maps', icon: 'fas fa-map-marker-alt', color: 'bg-green-500' },
+            { id: 'photos', name: 'Fotos', icon: 'fas fa-image', color: 'bg-yellow-500' },
+            { id: 'youtube', name: 'YouTube', icon: 'fab fa-youtube', color: 'bg-red-600' },
+            { id: 'gmail', name: 'Gmail', icon: 'fas fa-envelope', color: 'bg-red-500' },
+            { id: 'calendar', name: 'Calendario', icon: 'fas fa-calendar', color: 'bg-blue-600' },
+            { id: 'clock', name: 'Reloj', icon: 'far fa-clock', color: 'bg-blue-400' },
+            { id: 'playstore', name: 'Play Store', icon: 'fas fa-play', color: 'bg-white text-green-500' },
+        ];
+
+        const mockFiles = [
+            { name: 'Descargas', icon: 'fa-download', count: 12, color: 'text-blue-500' },
+            { name: 'Imágenes', icon: 'fa-images', count: 154, color: 'text-yellow-500' },
+            { name: 'Documentos', icon: 'fa-file-alt', count: 8, color: 'text-blue-400' },
+            { name: 'Videos', icon: 'fa-video', count: 3, color: 'text-red-500' }
+        ];
+
+        const wallpapers = [
+            'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=1000',
+            'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=1000',
+            'https://images.unsplash.com/photo-1557682250-33bd709cbe85?auto=format&fit=crop&q=80&w=1000',
+            'https://images.unsplash.com/photo-1507608616759-54f48f0af0ee?auto=format&fit=crop&q=80&w=1000'
+        ];
+        
+        let currentWallpaperIndex = 0;
+        let isDrawerOpen = false;
+        let isPanelOpen = false;
+        let currentOpenAppId = null;
+        
+        // Variables Cámara
+        let stream = null;
+        let facingMode = "environment"; // "user" para frontal
+
+        // Variables Calculadora
+        let calcVal = '0';
+        let calcHist = '';
+        let calcNewNum = true;
+
+        // --- STREAMING_CHUNK: Initialization and Clock ---
+        function init() {
+            renderAppDrawer();
+            renderFilesList();
+            updateClock();
+            setInterval(updateClock, 1000); 
+            
+            // Si el dispositivo prefiere tema claro
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+                document.getElementById('body-theme').classList.remove('dark');
+                document.getElementById('theme-toggle').checked = false;
+            }
+        }
+
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            // Formato 12h o 24h (dejaremos 12h estilo US/Latam)
+            hours = hours % 12;
+            hours = hours ? hours : 12; 
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            
+            const timeStr = hours + ':' + minutes;
+            
+            // Actualizar todos los relojes
+            document.getElementById('clock').innerText = timeStr;
+            document.getElementById('widget-clock').innerText = timeStr;
+            document.getElementById('lock-clock').innerText = timeStr;
+            document.getElementById('panel-clock').innerText = timeStr;
+            
+            const options = { weekday: 'long', month: 'short', day: 'numeric' };
+            const dateStr = now.toLocaleDateString('es-ES', options);
+            document.getElementById('widget-date').innerText = dateStr;
+            document.getElementById('lock-date').innerText = dateStr;
+        }
+
+        // --- STREAMING_CHUNK: System Rendering ---
+        function renderAppDrawer(filterText = '') {
+            const grid = document.getElementById('all-apps-grid');
+            grid.innerHTML = ''; 
+
+            const filteredApps = apps.filter(app => 
+                app.name.toLowerCase().includes(filterText.toLowerCase())
+            );
+
+            filteredApps.forEach(app => {
+                const action = app.action ? app.action : `openGenericApp('${app.name}', '${app.icon}')`;
+                
+                // Limpiar icono si es imagen o fontawesome
+                let iconHtml = app.icon.includes('fab') || app.icon.includes('fas') || app.icon.includes('far') 
+                    ? `<i class="${app.icon}"></i>`
+                    : `<img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/Google_Chrome_icon_%28February_2022%29.svg" class="w-8 h-8">`; // Simplificación para demo
+
+                if(app.id === 'chrome') iconHtml = `<img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/Google_Chrome_icon_%28February_2022%29.svg" class="w-8 h-8">`;
+                if(app.id === 'playstore') iconHtml = `<i class="${app.icon} bg-clip-text text-transparent bg-gradient-to-tr from-blue-500 via-green-500 to-yellow-500"></i>`;
+
+                const html = `
+                    <div class="app-icon-container" onclick="${action}">
+                        <div class="app-icon ${app.color}">${iconHtml}</div>
+                        <div class="app-label ${isDrawerOpen ? 'text-black dark:text-white text-shadow-none' : ''}">${app.name}</div>
+                    </div>
+                `;
+                grid.innerHTML += html;
+            });
+        }
+
+        function renderFilesList() {
+            const grid = document.getElementById('files-grid');
+            const list = document.getElementById('files-list');
+            
+            mockFiles.forEach(folder => {
+                // Para el Grid de arriba
+                grid.innerHTML += `
+                    <div class="bg-white dark:bg-gray-900 p-3 rounded-2xl flex items-center shadow-sm cursor-pointer active:scale-95 transition-transform" onclick="showToast('Carpeta vacía')">
+                        <div class="w-10 h-10 rounded-full bg-blue-50 dark:bg-gray-800 flex items-center justify-center mr-3">
+                            <i class="fas ${folder.icon} ${folder.color}"></i>
+                        </div>
+                        <div>
+                            <div class="font-medium text-sm text-gray-800 dark:text-gray-200">${folder.name}</div>
+                        </div>
+                    </div>
+                `;
+                
+                // Para la lista de abajo
+                list.innerHTML += `
+                    <div class="flex items-center p-3 bg-white dark:bg-gray-900 rounded-xl shadow-sm cursor-pointer active:bg-gray-50 dark:active:bg-gray-800" onclick="showToast('Abriendo ${folder.name}')">
+                        <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mr-4">
+                            <i class="fas fa-folder text-blue-400"></i>
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="text-gray-900 dark:text-white font-medium text-sm">${folder.name}</h4>
+                            <p class="text-xs text-gray-500">${folder.count} elementos · Hoy</p>
+                        </div>
+                        <i class="fas fa-ellipsis-v text-gray-400 px-2"></i>
+                    </div>
+                `;
+            });
+        }
+
+        // --- STREAMING_CHUNK: Navigation and Core Logic ---
+        function unlockPhone() {
+            document.getElementById('lock-screen').classList.add('unlocked');
+        }
+
+        function toggleAppDrawer() {
+            const drawer = document.getElementById('app-drawer');
+            isDrawerOpen = !isDrawerOpen;
+            if (isDrawerOpen) {
+                drawer.classList.add('open');
+                renderAppDrawer(document.querySelector('#app-drawer input').value);
+                if(isPanelOpen) toggleNotifications(); // Cierra notificaciones si se abre cajón
+            } else {
+                drawer.classList.remove('open');
+                document.querySelector('#app-drawer input').blur(); 
+                document.querySelector('#app-drawer input').value = '';
+                renderAppDrawer();
+            }
+        }
+
+        function toggleNotifications() {
+            const panel = document.getElementById('notification-panel');
+            const container = document.getElementById('phone-container');
+            isPanelOpen = !isPanelOpen;
+            if(isPanelOpen) {
+                panel.classList.add('open');
+                container.classList.add('panel-open');
+                if(isDrawerOpen) toggleAppDrawer();
+            } else {
+                panel.classList.remove('open');
+                container.classList.remove('panel-open');
+            }
+        }
+
+        function toggleQS(element, iconId, faClass) {
+            const iconDiv = element.querySelector('.qs-icon');
+            if (iconDiv.classList.contains('active')) {
+                iconDiv.classList.remove('active');
+                iconDiv.classList.add('inactive');
+                if(iconId) document.getElementById(iconId).style.display = 'none';
+            } else {
+                iconDiv.classList.add('active');
+                iconDiv.classList.remove('inactive');
+                if(iconId) document.getElementById(iconId).style.display = 'inline-block';
+            }
+        }
+
+        function toggleThemeQS(element) {
+            toggleTheme();
+            toggleQS(element, null, null);
+            document.getElementById('theme-toggle').checked = document.getElementById('body-theme').classList.contains('dark');
+        }
+
+        function openApp(appId) {
+            currentOpenAppId = appId;
+            const appElement = document.getElementById(`app-${appId}`);
+            const container = document.getElementById('phone-container');
+            
+            if (appElement) {
+                appElement.classList.add('open');
+                container.classList.add('system-app-open');
+                
+                // Lógicas específicas de apps
+                if (appId === 'camera') {
+                    container.classList.add('camera-open');
+                    startCamera();
+                } else if (appId === 'calc') {
+                    // Reset calc if needed
+                }
+                
+                if(isDrawerOpen) toggleAppDrawer(); 
+                if(isPanelOpen) toggleNotifications();
+            }
+        }
+
+        function openGenericApp(name, iconClass) {
+            currentOpenAppId = 'generic';
+            document.getElementById('generic-app-title').innerText = name;
+            document.getElementById('generic-app-icon').className = `${iconClass} text-6xl text-blue-500`;
+            
+            document.getElementById('app-generic').classList.add('open');
+            document.getElementById('phone-container').classList.add('system-app-open');
+            if(isDrawerOpen) toggleAppDrawer();
+        }
+
+        function closeApp() {
+            if (currentOpenAppId) {
+                const appElement = document.getElementById(`app-${currentOpenAppId}`);
+                if (appElement) appElement.classList.remove('open');
+                
+                if (currentOpenAppId === 'camera') {
+                    stopCamera();
+                    document.getElementById('phone-container').classList.remove('camera-open');
+                }
+                
+                currentOpenAppId = null;
+                document.getElementById('phone-container').classList.remove('system-app-open');
+            }
+        }
+
+        function goHome() {
+            if (currentOpenAppId) closeApp();
+            if (isDrawerOpen) toggleAppDrawer();
+            if (isPanelOpen) toggleNotifications();
+            
+            // Animación inicio
+            const container = document.getElementById('phone-container');
+            container.style.transform = 'scale(0.98)';
+            setTimeout(() => container.style.transform = 'none', 150);
+        }
+
+        function handleBack() {
+            if (isPanelOpen) {
+                toggleNotifications();
+            } else if (isDrawerOpen) {
+                toggleAppDrawer();
+            } else if (currentOpenAppId) {
+                closeApp();
+            } else {
+                goHome();
+            }
+        }
+
+        // --- STREAMING_CHUNK: App Implementations (Calc, Camera, Browser, Settings) ---
+
+        // BROWSER APP
+        function handleBrowserSearch(e) {
+            e.preventDefault();
+            const input = document.getElementById('url-input').value;
+            const iframe = document.getElementById('browser-frame');
+            const progress = document.getElementById('browser-progress');
+            
+            // Simular carga
+            progress.style.width = '30%';
+            progress.style.transition = 'width 0.5s ease';
+            
+            // Duckduckgo permite iframes en su versión lite
+            let url = input;
+            if (!url.startsWith('http')) {
+                url = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(input)}`;
+            }
+            
+            iframe.src = url;
+            document.activeElement.blur(); // Ocultar teclado
+        }
+        
+        function browserLoaded() {
+            const progress = document.getElementById('browser-progress');
+            progress.style.width = '100%';
+            setTimeout(() => {
+                progress.style.transition = 'none';
+                progress.style.width = '0';
+            }, 300);
+        }
+
+        // CALCULATOR APP
+        function calcAction(val) {
+            const display = document.getElementById('calc-display');
+            const history = document.getElementById('calc-history');
+
+            if (val === 'C') {
+                calcVal = '0';
+                calcHist = '';
+                calcNewNum = true;
+            } else if (val === '=') {
+                try {
+                    // Eval seguro básico reemplazando simbolos
+                    let expr = calcHist + calcVal;
+                    expr = expr.replace(/×/g, '*').replace(/÷/g, '/');
+                    const result = eval(expr);
+                    calcHist += ' ' + calcVal + ' =';
+                    calcVal = String(result);
+                    // Acortar si es muy largo
+                    if(calcVal.length > 12) calcVal = result.toPrecision(10);
+                    calcNewNum = true;
+                } catch (e) {
+                    calcVal = 'Error';
+                    calcNewNum = true;
+                }
+            } else if (['+', '-', '*', '/', '%'].includes(val)) {
+                let op = val;
+                if(op === '*') op = '×';
+                if(op === '/') op = '÷';
+                
+                calcHist = calcVal + ' ' + op;
+                calcNewNum = true;
+            } else {
+                // Numeros o punto
+                if (calcNewNum) {
+                    calcVal = val === '.' ? '0.' : val;
+                    calcNewNum = false;
+                } else {
+                    if(calcVal.length < 12) {
+                        calcVal = calcVal === '0' && val !== '.' ? val : calcVal + val;
+                    }
+                }
+            }
+
+            display.innerText = calcVal;
+            history.innerText = calcHist;
+        }
+
+        // CAMERA APP
+        async function startCamera() {
+            const video = document.getElementById('camera-preview');
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: facingMode }
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                console.error("Error accediendo a cámara:", err);
+                showToast("Sin permisos o sin cámara web disponible");
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+        }
+
+        function switchCamera() {
+            facingMode = facingMode === "environment" ? "user" : "environment";
+            stopCamera();
+            startCamera();
+        }
+
+        function takePhoto() {
+            const flash = document.getElementById('camera-flash');
+            flash.style.opacity = '1';
+            setTimeout(() => { flash.style.opacity = '0'; }, 100);
+            showToast("Foto guardada");
+        }
+
+        // SETTINGS & SYSTEM
+        function toggleTheme() {
+            const body = document.getElementById('body-theme');
+            body.classList.toggle('dark');
+        }
+
+        function changeWallpaper() {
+            currentWallpaperIndex = (currentWallpaperIndex + 1) % wallpapers.length;
+            const container = document.getElementById('phone-container');
+            const lockScreen = document.getElementById('lock-screen');
+            const url = `url('${wallpapers[currentWallpaperIndex]}')`;
+            
+            container.style.backgroundImage = url;
+            lockScreen.style.backgroundImage = 'inherit'; // lock screen hereda
+            showToast('Fondo actualizado');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 2500);
+        }
+
+        // Iniciar
+        window.onload = init;
+
+    </script>
+</body>
+</html>
